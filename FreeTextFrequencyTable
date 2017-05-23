@@ -1,0 +1,68 @@
+#Free text cleaning: 1st step using a function that generates a frequency table of terms in corpora
+df = read.csv("Dataset.csv", header = TRUE, stringsAsFactors = FALSE)
+
+#identify rows that contain slashes, to distinguish shorthands from the unnecessary slashes
+#1st find how many rows contain slashes
+ContainSlashes = grep("/", df$FreeText[1:nrow(df)])
+
+#now extract the fields that contain slashes into a separate matrix for parsing
+SlashesToEvaluate = as.matrix(df$FreeText[ContainSlashes])
+
+#this converts free text into term matrices for evaluation of uniqueness and correction
+FreeTextFreqTable = function(CorporaToClean) {
+  
+  #free text has to be in matrix form
+  CorporaToClean = as.matrix(CorporaToClean)
+
+  #separate each row string of text at every instance of white space
+  Sep_at_Spaces = strsplit(CorporaToClean, " ")
+
+  #determine the dimensions of the document term matrix (dtm) by Id'ing the length of each string
+  
+  #identify the length of each string
+  Length.count = c()
+  for (i in 1:length(Sep_at_Spaces)) {
+    Length.count[i] = length(Sep_at_Spaces[[i]])
+  }
+  
+  #identify the length of the longest string for the dimensions of the document term matrix
+  long = max(Length.count)
+  
+  #turn the list of strings into a document term matrix (dtm), so each word/term is a unique entity
+  
+  #this is known as tokenizing each string, making each element a 'token'
+  terms = matrix(NA, nrow = nrow(CorporaToClean), ncol = long)
+  for (i in 1:length(Sep_at_Spaces)) {
+    for (k in 1:Length.count[i]) {
+      terms[i,k] = Sep_at_Spaces[[i]][k]
+    }
+  }
+  
+  #convert mixed case terms to lower case to standardize the free text
+  terms = tolower(terms)
+  
+  #remove all punctuation from the terms matrix
+  terms = gsub("[^[:alnum:][:blank:]/]", " ",terms)
+  
+  #remove spaces in the 1st and last slot, remove extra spaces
+  terms = gsub("^ |\\ $", "", terms)
+  terms = gsub('\\s+', ' ', terms)
+  
+  #now I can use table to find the most frequent terms, clean them, and put them back in the dataset
+  freq_of_terms = table(terms)
+  
+  #put terms in a user friendly matrix and order them
+  freq_of_terms_tbl = as.matrix(freq_of_terms)
+  freq_of_terms_tbl = as.matrix(freq_of_terms_tbl[order(-freq_of_terms_tbl),])
+  return(freq_of_terms_tbl)
+}
+
+#run the function above to get the terms with slashes
+SlashesToEvaluateTable = FreeTextFreqTable(SlashesToEvaluate)
+
+#convert the free text variable into matrix to execute the function above
+FreeText = as.matrix(df$FreeText)
+
+#get the terms for all free text, execute the same procedure from above on the broader set of terms
+FreeTextToEvaluateTable = FreeTextFreqTable(FreeText)
+
